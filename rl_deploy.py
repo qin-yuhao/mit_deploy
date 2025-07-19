@@ -292,11 +292,14 @@ class RLController:
         # 计算相对关节位置
         relative_pos = (joint_pos - np.array(RLModelConfig.pose)) * RLModelConfig.scale.dof_pos
         scaled_vel = joint_vel * RLModelConfig.scale.dof_vel
-        
+        ang_vel = ang_vel * RLModelConfig.scale.ang_vel
+        cmd = self.cmd_vel
+        #最后一维度乘以0.5
+        cmd[2] *= 0.5  # wz缩放为0.5
         # 组装观测向量 - 按照C++代码的顺序（去掉线性加速度）
         obs = np.concatenate([
             # 命令信息 (4维)
-            self.cmd_vel,              # 3: vx, vy, wz
+            cmd,              # 3: vx, vy, wz
             [self.target_height],      # 1: target_height
             
             # IMU数据 (6维) - 去掉线性加速度

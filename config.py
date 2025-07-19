@@ -101,14 +101,14 @@ class StandUpConfig(PoseConfig):
             # 模型顺序: FL_hip, FR_hip, RL_hip, RR_hip, FL_thigh, FR_thigh, RL_thigh, RR_thigh, FL_calf, FR_calf, RL_calf, RR_calf
             self.pose = [
                 -0.0, -0.8, 1.5,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.05, -0.7, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                -0.05, -0.75, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
                 -0.05,  1.0, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.0,  0.9, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                -0.0,  0.95, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
-            self.kp = [22] * 12
+            self.kp = [25] * 12
         if self.kd is None:
-            self.kd = [0.8] * 12
+            self.kd = [0.5] * 12
 
 
 @dataclass
@@ -116,17 +116,19 @@ class ScaleConfig:
     """缩放配置 (模型顺序)"""
     action: List[float] = None
     dof_pos: float = 1.0
-    dof_vel: float = 1.0
-    
+    dof_vel: float = 0.05
+    ang_vel: float = 0.25
+
+ 
     def __post_init__(self):
         if self.action is None:
             self.action = [0.25 for _ in range(12)]  # 默认动作缩放为0.0
-            hip_decimation = 0.25
+            #hip_decimation = 0.5
             
             # 通过全局常量设置髋关节的缩放
-            for i, name in enumerate(MODEL_JOINT_NAMES):
-                if "hip" in name:
-                    self.action[i] = hip_decimation * self.action[i]
+            # for i, name in enumerate(MODEL_JOINT_NAMES):
+            #     if "hip" in name:
+            #         self.action[i] = hip_decimation * self.action[i]
                 
             print(f"Action scale set to: {self.action}")
             
@@ -151,8 +153,8 @@ class RLModelConfig:
         if self.pose is None:
             self.pose = [
                 -0.0, -0.8, 1.5,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.05, -0.7, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.05,  1.0, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.07, -0.7, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                -0.07,  1.0, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
                 -0.0,  0.9, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         
