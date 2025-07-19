@@ -96,7 +96,7 @@ class RLController:
                     self.cmd_vel = np.array([vx, vy, wz])
                     self.target_height = target_height
                     
-                    # print(f"收到命令: mode={mode}, vx={vx:.3f}, vy={vy:.3f}, wz={wz:.3f}, height={target_height:.3f}")
+                    #print(f"收到命令: mode={mode}, vx={vx:.3f}, vy={vy:.3f}, wz={wz:.3f}, height={target_height:.3f}")
                     
             except socket.timeout:
                 continue
@@ -354,20 +354,28 @@ class RLController:
         # 只有在RL_MODEL模式下才执行强化学习控制
         if self.current_mode == 3:  # RL_MODEL
             # 每隔decimation步进行一次推理
-            if self.iteration % 100 == 0:
-                # 获取观测
-                obs = self.get_observation()
+            if self.iteration % RLModelConfig.decimation == 0:
+                # 开始计时
+                start_time = time.time()
                 
+                # 获取观测
+                self.apply_action(self.last_action)  # 应用上次动作
+                obs = self.get_observation()
                 # 运行推理
                 action = self.run_inference(obs)
                 
                 # 应用动作
                 self.apply_action(action)
                 
-                # 每次都打印完整的观测和动作信息
-                # print(f"[{self.iteration}] 完整观测 ({len(obs)}维): {obs.round(3)}")
-                print(f"[{self.iteration}] 完整动作 ({len(action)}维): {action.round(3)}")
-                # print("-" * 80)  # 分隔线
+                # 计算延迟
+                end_time = time.time()
+                delay_ms = (end_time - start_time) * 1000  # 转换为毫秒
+                
+                if self.iteration % 100 == 0:  # 每100步打印一次
+                    # 打印关节之前的观测数据
+                    print(f"[{self.iteration}] 观测前10维: {obs[:10].round(3)}")
+                    print(f"[{self.iteration}] 动作: {action.round(3)}")
+                    print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
         
         self.iteration += 1
         
