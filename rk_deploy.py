@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 简单的强化学习部署代码
-基于ONNX Runtime的四足机器人控制
+基于RKNN Runtime的四足机器人控制（支持实时性优化）
 """
 
 import sys
@@ -11,6 +11,9 @@ import numpy as np
 import argparse
 from pathlib import Path
 from config import *
+
+# 添加实时性优化导入
+import resource
 
 # 创建配置实例
 RobotConfig = RobotConfig()
@@ -31,9 +34,8 @@ sys.path.append('/home/cat')
 from motor_ctl_pyb.joint import JointController
 sys.path.append('/home/cat/dm_imu_pyb')
 import dm_imu_py
-import onnxruntime as ort
-
-
+# 导入RKNN Lite而不是ONNX Runtime
+from rknnlite.api import RKNNLite
 
 
 class RLController:
@@ -54,6 +56,9 @@ class RLController:
         
         # 观测相关
         self.obs_dim = 45  # 4 command + 6 imu(去掉lin_acc) + 36 joints
+        
+        # 添加运行标志
+        self._running = True
         
         # 初始化命令接收器
         self.init_command_receiver()
@@ -105,28 +110,26 @@ class RLController:
                 time.sleep(0.1)
         
     def init_onnx_model(self):
-        """初始化ONNX模型"""
-        if not os.path.exists(RLModelConfig.model_path):
-            raise FileNotFoundError(f"ONNX模型文件不存在: {RLModelConfig.model_path}")
+        """初始化RKNN模型并配置运行时环境"""
+        # 使用RKNN模型路径
+        rknn_model_path = "/home/cat/mit_deploy/policy.rknn"
+        if not os.path.exists(rknn_model_path):
+            raise FileNotFoundError(f"RKNN模型文件不存在: {rknn_model_path}")
             
-        # 创建会话选项
-        session_options = ort.SessionOptions()
-        session_options.intra_op_num_threads = 1
-        session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        # 创建RKNN实例
+        self.rknn_session = RKNNLite()
         
-        # 加载模型
-        self.onnx_session = ort.InferenceSession(
-            RLModelConfig.model_path, 
-            sess_options=session_options
-        )
+        # 加载RKNN模型
+        ret = self.rknn_session.load_rknn(rknn_model_path)
+        if ret != 0:
+            raise RuntimeError('Load RKNN model failed')
         
-        # 获取输入输出信息
-        self.input_name = self.onnx_session.get_inputs()[0].name
-        self.output_name = self.onnx_session.get_outputs()[0].name
+        # 初始化运行时环境
+        ret = self.rknn_session.init_runtime()#core_mask=RKNNLite.NPU_CORE_1
+        if ret != 0:
+            raise RuntimeError('Init runtime environment failed')
         
-        print(f"✓ ONNX模型加载成功")
-        print(f"  - 输入名称: {self.input_name}")
-        print(f"  - 输出名称: {self.output_name}")
+        print(f"✓ RKNN模型加载成功")
         
     def init_hardware(self):
         """初始化硬件接口"""
@@ -318,12 +321,12 @@ class RLController:
         return obs
         
     def run_inference(self, observation):
-        """运行模型推理"""
+        """运行RKNN模型推理"""
         # 准备输入
         input_data = observation.reshape(1, -1).astype(np.float32)
         
-        # 运行推理
-        outputs = self.onnx_session.run([self.output_name], {self.input_name: input_data})
+        # 运行RKNN推理
+        outputs = self.rknn_session.inference(inputs=[input_data])
         action = outputs[0].squeeze()
         
         return action
@@ -366,15 +369,16 @@ class RLController:
                 # 获取观测
                 #self.apply_action(self.last_action)  # 应用上次动作
                 obs = self.get_observation()
-                start_time = time.time()
                 # 运行推理
+                start_time = time.time()
                 action = self.run_inference(obs)
                 # 计算延迟
                 end_time = time.time()
                 delay_ms = (end_time - start_time) * 1000  # 转换为毫秒
+                print(f"推理延迟: {delay_ms:.2f}ms")
                 # 应用动作
                 self.apply_action(action)
-                print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
+                
                 
                 
                 if self.iteration % 100 == 0:  # 每100步打印一次
@@ -428,7 +432,52 @@ class RLController:
         
         # 停止关节控制器
         self.joint_controller.stop()
+        
+        # 停止命令接收线程
+        self._running = False
+        if self.command_thread.is_alive():
+            self.command_thread.join(timeout=1.0)
+            
+        # 释放RKNN资源
+        if hasattr(self, 'rknn_session'):
+            self.rknn_session.release()
+            self.rknn_session = None
+            
+        # 解锁内存
+        try:
+            os.munlockall()
+        except Exception as e:
+            print(f"内存解锁失败: {e}")
+            
         print("✓ 控制器已停止")
+
+
+def set_realtime_priority(priority=95):
+    """设置实时优先级"""
+    try:
+        # 设置调度策略为 FIFO
+        os.sched_setscheduler(0, os.SCHED_FIFO, os.sched_param(priority))
+        print(f"✓ 已设置实时优先级: {priority}")
+        return True
+    except PermissionError:
+        print("⚠️ 设置实时优先级需要 root 权限")
+        return False
+    except Exception as e:
+        print(f"⚠️ 设置实时优先级失败: {e}")
+        return False
+
+def lock_process_memory():
+    """锁定进程内存，避免交换到磁盘"""
+    try:
+        # 设置内存锁定限制
+        resource.setrlimit(resource.RLIMIT_MEMLOCK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
+        # 锁定当前进程的内存
+        os.mlockall(1)  # MCL_CURRENT
+        print("✓ 进程内存已锁定")
+        return True
+    except Exception as e:
+        print(f"⚠️ 内存锁定失败: {e}")
+        return False
 
 
 def main():
@@ -436,7 +485,14 @@ def main():
     parser.add_argument('--vx', type=float, default=0.0, help='前进速度 (m/s)')
     parser.add_argument('--vy', type=float, default=0.0, help='侧向速度 (m/s)')
     parser.add_argument('--wz', type=float, default=0.0, help='转向速度 (rad/s)')
+    parser.add_argument('--realtime', action='store_true', help='启用实时优化',default=True)
     args = parser.parse_args()
+    
+    # 实时性优化
+    if args.realtime:
+        print("启用实时性优化...")
+        set_realtime_priority()
+        lock_process_memory()
     
     try:
         # 创建控制器
@@ -456,16 +512,34 @@ def main():
         
         # 主控制循环 - 无限循环
         try:
+            # 使用单调时钟进行更精确的定时
+            next_time = time.monotonic()
             while True:
-                step_start = time.time()
+                step_start = time.monotonic()
                 
                 # 运行一个控制步骤
                 controller.run_step()
                 
-                # 控制循环时间
-                elapsed = time.time() - step_start
-                sleep_time = max(0, RobotConfig.dt - elapsed)
-                time.sleep(sleep_time)
+                # 使用精确的周期控制
+                next_time += RobotConfig.dt
+                sleep_time = next_time - time.monotonic()
+                
+                # 如果落后于计划时间，立即继续
+                if sleep_time > 0:
+                    # 使用更高精度的sleep方法
+                    if sleep_time > 0.0001:  # 大于100微秒时使用sleep
+                        time.sleep(sleep_time)
+                    else:  # 否则使用忙等待以获得更高精度
+                        while time.monotonic() < next_time:
+                            pass
+                else:
+                    # 如果系统落后，重置时间基准以避免积累延迟
+                    next_time = time.monotonic()
+                
+                # 可选：打印周期信息用于调试
+                if args.realtime and controller.iteration % 1000 == 0:
+                    actual_dt = time.monotonic() - step_start
+                    print(f"[{controller.iteration}] 实际周期时间: {actual_dt*1000:.3f}ms")
                 
         except KeyboardInterrupt:
             print("\n收到停止信号...")
