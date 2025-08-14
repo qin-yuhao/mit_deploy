@@ -35,19 +35,18 @@ class ActuatorConfig:
     def __post_init__(self):
         if self.directions is None:
             self.directions = [
-                +1, +1, +1,  # 左前腿 (FL): hip, thigh, calf
-                -1, -1, -1,  # 右前腿 (FR): hip, thigh, calf
-                -1, -1, -1,  # 左后腿 (RL): hip, thigh, calf
-                +1, +1, +1   # 右后腿 (RR): hip, thigh, calf
+                +1, -1, +1,  # 左前腿
+                -1, +1, -1,  # 右前腿  
+                +1, -1, +1,  # 左后腿
+                +1, +1, -1   # 右后腿
             ]
         
         if self.zero_positions is None:
             self.zero_positions = [
-                0.0044,  -1.4755,   -2.723859,  # 左前腿 (FL): hip, thigh, calf
-                0.0190,   1.6032,    2.709659,  # 右前腿 (FR): hip, thigh, calf
-                -0.0151,  1.7202,  -2.724459,  # 左后腿 (RL): hip, thigh, calf
-                #-0.0232, -1.9,    2.708859 
-                -0.0232, -1.5967,    2.708859   # 右后腿 (RR): hip, thigh, calf
+                0.0,  0.0,   0.0,  # 左前腿 (FL): hip, thigh, calf
+                0.0,  0.0,   0.0,  # 右前腿 (FR): hip, thigh, calf
+                0.0,  0.0,   0.0,  # 左后腿 (RL): hip, thigh, calf
+                0.0,  0.0,   0.0,   # 右后腿 (RR): hip, thigh, calf
             ]
 
 
@@ -76,17 +75,16 @@ class LieDownConfig(PoseConfig):
     
     def __post_init__(self):
         if self.pose is None:
-            # 模型顺序: FL_hip, FR_hip, RL_hip, RR_hip, FL_thigh, FR_thigh, RL_thigh, RR_thigh, FL_calf, FR_calf, RL_calf, RR_calf
             self.pose = [
-                -0.6, -1.17, 2.7,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.6, -1.17, 2.7,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.6,  1.17, -2.7,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.6,  1.17, -2.7    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                -0.0, -1.5, 0,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.0, -1.5, 0,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                -0.0,  1.5, -0,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.0,  1.5, -0    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
             self.kp = [8] * 12
         if self.kd is None:
-            self.kd = [0.5] * 12
+            self.kd = [1] * 12
 
 
 @dataclass
@@ -98,15 +96,14 @@ class StandUpConfig(PoseConfig):
     
     def __post_init__(self):
         if self.pose is None:
-            # 模型顺序: FL_hip, FR_hip, RL_hip, RR_hip, FL_thigh, FR_thigh, RL_thigh, RR_thigh, FL_calf, FR_calf, RL_calf, RR_calf
             self.pose = [
-                -0.0, -0.8, 1.5,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.05, -0.75, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.05,  1.0, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.0,  0.95, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                0.0, 0.5, 1.1,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.0, 0.5, 1.1,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                0.0,  -0.5, -1.1,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.0,  -0.5, -1.1    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
-            self.kp = [25] * 12
+            self.kp = [12] * 12
         if self.kd is None:
             self.kd = [0.5] * 12
 
@@ -144,7 +141,7 @@ class RLModelConfig:
     
     decimation: int = 1
     #model_path: str = "/home/cat/mit_dog_ctl/policy719.onnx"
-    model_path: str = "/home/cat/deploy/policy.onnx"
+    model_path: str = "/home/cat/mit_deploy/policy.onnx"
 
     # 缩放配置
     scale: ScaleConfig = None
@@ -152,14 +149,14 @@ class RLModelConfig:
     def __post_init__(self):
         if self.pose is None:
             self.pose = [
-                -0.0, -0.8, 1.5,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.07, -0.7, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.07,  1.0, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.0,  0.9, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                0.0, 0.5, 1.1,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.0, 0.5, 1.1,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                0.0,  -0.5, -1.1,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.0,  -0.5, -1.1    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         
         if self.kp is None:
-            self.kp = [20] * 12
+            self.kp = [0] * 12
         
         if self.kd is None:
             self.kd = [0.5] * 12

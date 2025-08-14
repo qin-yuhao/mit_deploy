@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 简单的强化学习部署代码
-基于ONNX Runtime的四足机器人控制
+基于RKNN Runtime的四足机器人控制
 """
 
 import sys
@@ -28,12 +28,11 @@ import threading
 
 # 修复导入路径
 sys.path.append('/home/cat')
-from motor_ctl.joint import JointController
-sys.path.append('/home/cat/dm_imu/build')
+from motor_ctl_pyb.joint import JointController
+sys.path.append('/home/cat/dm_imu_pyb')
 import dm_imu_py
-import onnxruntime as ort
-
-
+# 导入RKNN Lite而不是ONNX Runtime
+from rknnlite.api import RKNNLite
 
 
 class RLController:
@@ -53,7 +52,7 @@ class RLController:
         self.mode_changed = False  # 模式变化标志
         
         # 观测相关
-        self.obs_dim = 46  # 4 command + 6 imu(去掉lin_acc) + 36 joints
+        self.obs_dim = 45  # 4 command + 6 imu(去掉lin_acc) + 36 joints
         
         # 初始化命令接收器
         self.init_command_receiver()
@@ -105,34 +104,34 @@ class RLController:
                 time.sleep(0.1)
         
     def init_onnx_model(self):
-        """初始化ONNX模型"""
-        if not os.path.exists(RLModelConfig.model_path):
-            raise FileNotFoundError(f"ONNX模型文件不存在: {RLModelConfig.model_path}")
+        """初始化RKNN模型"""
+        # 使用RKNN模型路径
+        rknn_model_path = "/home/cat/mit_deploy/policy.rknn"
+        if not os.path.exists(rknn_model_path):
+            raise FileNotFoundError(f"RKNN模型文件不存在: {rknn_model_path}")
             
-        # 创建会话选项
-        session_options = ort.SessionOptions()
-        session_options.intra_op_num_threads = 1
-        session_options.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        # 创建RKNN实例
+        self.rknn_session = RKNNLite()
         
-        # 加载模型
-        self.onnx_session = ort.InferenceSession(
-            RLModelConfig.model_path, 
-            sess_options=session_options
-        )
+        # 加载RKNN模型
+        ret = self.rknn_session.load_rknn(rknn_model_path)
+        if ret != 0:
+            raise RuntimeError('Load RKNN model failed')
         
-        # 获取输入输出信息
-        self.input_name = self.onnx_session.get_inputs()[0].name
-        self.output_name = self.onnx_session.get_outputs()[0].name
+        # 初始化运行时环境
+        ret = self.rknn_session.init_runtime()#core_mask=RKNNLite.NPU_CORE_1
+        if ret != 0:
+            raise RuntimeError('Init runtime environment failed')
         
-        print(f"✓ ONNX模型加载成功")
-        print(f"  - 输入名称: {self.input_name}")
-        print(f"  - 输出名称: {self.output_name}")
+        print(f"✓ RKNN模型加载成功")
         
     def init_hardware(self):
         """初始化硬件接口"""
         # 初始化关节控制器
         print("初始化关节控制器...")
         self.joint_controller = JointController(JointNamesConfig.model_joint_names,directions=ActuatorConfig.directions)
+        # 启动关节控制器线程
+        self.joint_controller.start_control_thread(rate=1000)
         
         # 初始化IMU
         print("初始化IMU...")
@@ -181,7 +180,7 @@ class RLController:
         self.joint_controller.set_joint_commands(
             positions=[0.0] * 12,
             kp_gains=[0.0] * 12,
-            kd_gains=[3.0] * 12
+            kd_gains=[2.0] * 12
         )
         
     def execute_lie_down_mode(self):
@@ -300,7 +299,7 @@ class RLController:
         obs = np.concatenate([
             # 命令信息 (4维)
             cmd,              # 3: vx, vy, wz
-            [self.target_height],      # 1: target_height
+            #[self.target_height],      # 1: target_height
             
             # IMU数据 (6维) - 去掉线性加速度
             ang_vel,                   # 3: 角速度 (gyro_x, gyro_y, gyro_z)
@@ -316,12 +315,12 @@ class RLController:
         return obs
         
     def run_inference(self, observation):
-        """运行模型推理"""
+        """运行RKNN模型推理"""
         # 准备输入
         input_data = observation.reshape(1, -1).astype(np.float32)
         
-        # 运行推理
-        outputs = self.onnx_session.run([self.output_name], {self.input_name: input_data})
+        # 运行RKNN推理
+        outputs = self.rknn_session.inference(inputs=[input_data])
         action = outputs[0].squeeze()
         
         return action
@@ -359,28 +358,38 @@ class RLController:
             # 每隔decimation步进行一次推理
             if self.iteration % RLModelConfig.decimation == 0:
                 # 开始计时
-                start_time = time.time()
+                
                 
                 # 获取观测
-                self.apply_action(self.last_action)  # 应用上次动作
+                #self.apply_action(self.last_action)  # 应用上次动作
                 obs = self.get_observation()
                 # 运行推理
+                start_time = time.time()
                 action = self.run_inference(obs)
-                
-                # 应用动作
-                self.apply_action(action)
-                
                 # 计算延迟
                 end_time = time.time()
                 delay_ms = (end_time - start_time) * 1000  # 转换为毫秒
+                print(f"推理延迟: {delay_ms:.2f}ms")
+                # 应用动作
+                self.apply_action(action)
+                
+                
                 
                 if self.iteration % 100 == 0:  # 每100步打印一次
                     # 打印关节之前的观测数据
-                    print(f"[{self.iteration}] 观测前10维: {obs[:10].round(3)}")
+                    print(f"[{self.iteration}] 观测前10维: {obs[:].round(3)}")
                     print(f"[{self.iteration}] 动作: {action.round(3)}")
                     print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
+                    #当前位置
+                    # 获取关节状态
+                    
         
         self.iteration += 1
+        # if self.iteration % 100 == 0:
+        #     joint_states = self.joint_controller.get_joint_states()
+        #     joint_pos = np.array(joint_states['positions'])
+        #     #joint_vel = np.array(joint_states['velocities'])
+        #     print(f"[{self.iteration}] 当前关节位置: {joint_pos.round(3)}")
         
     def move_to_default_pose(self, duration=3.0):
         """移动到默认姿态"""
@@ -417,6 +426,11 @@ class RLController:
         
         # 停止关节控制器
         self.joint_controller.stop()
+        
+        # 释放RKNN资源
+        if hasattr(self, 'rknn_session'):
+            self.rknn_session.release()
+            
         print("✓ 控制器已停止")
 
 
