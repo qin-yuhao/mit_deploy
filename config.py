@@ -35,7 +35,7 @@ class ActuatorConfig:
     def __post_init__(self):
         if self.directions is None:
             self.directions = [
-                +1, -1, +1,  # 左前腿
+                -1, -1, +1,  # 左前腿
                 -1, +1, -1,  # 右前腿  
                 +1, -1, +1,  # 左后腿
                 +1, +1, -1   # 右后腿
@@ -76,10 +76,10 @@ class LieDownConfig(PoseConfig):
     def __post_init__(self):
         if self.pose is None:
             self.pose = [
-                -0.0, -1.5, 0,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.0, -1.5, 0,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.0,  1.5, -0,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.0,  1.5, -0    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                0.4, -1.5, 0,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.4, -1.5, 0,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                0.4,  1.5, -0,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.4,  1.5, -0    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
             self.kp = [8] * 12
@@ -97,13 +97,13 @@ class StandUpConfig(PoseConfig):
     def __post_init__(self):
         if self.pose is None:
             self.pose = [
-                0.0, 0.5, 1.1,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.0, 0.5, 1.1,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                0.0,  -0.5, -1.1,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.0,  -0.5, -1.1    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                0.0, 0.28, 0.4,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.0, 0.3, 0.4,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                0.0,  -0.3, -0.4,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.0,  -0.3, -0.4    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
-            self.kp = [12] * 12
+            self.kp = [15] * 12
         if self.kd is None:
             self.kd = [0.5] * 12
 
@@ -149,14 +149,14 @@ class RLModelConfig:
     def __post_init__(self):
         if self.pose is None:
             self.pose = [
-                0.0, 0.5, 1.1,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.0, 0.5, 1.1,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                0.0,  -0.5, -1.1,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.0,  -0.5, -1.1    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                0.0, 0.28, 0.4,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.0, 0.3, 0.4,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                0.0,  -0.3, -0.4,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.0,  -0.3, -0.4    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         
         if self.kp is None:
-            self.kp = [0] * 12
+            self.kp = [15] * 12
         
         if self.kd is None:
             self.kd = [0.5] * 12

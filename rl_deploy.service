@@ -1,0 +1,19 @@
+[Unit]
+Description=RL Deploy Service for Robot Control
+After=network.target
+After=robot_control.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/cat/mit_deploy
+ExecStartPre=/home/cat/mit_dog_ctl/setcan.sh
+ExecStart=/usr/bin/python3 /home/cat/mit_deploy/rl_deploy.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

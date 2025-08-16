@@ -134,7 +134,7 @@ class RLController:
         print("初始化关节控制器...")
         self.joint_controller = JointController(JointNamesConfig.model_joint_names,directions=ActuatorConfig.directions)
         # 启动关节控制器线程
-        self.joint_controller.start_control_thread(rate=1000)
+        self.joint_controller.start_control_thread(rate=600)
         
         # 初始化IMU
         print("初始化IMU...")
@@ -362,19 +362,18 @@ class RLController:
             if self.iteration % RLModelConfig.decimation == 0:
                 # 开始计时
                 
-                
-                # 获取观测
-                #self.apply_action(self.last_action)  # 应用上次动作
-                obs = self.get_observation()
                 start_time = time.time()
+                obs = self.get_observation()
+                
                 # 运行推理
                 action = self.run_inference(obs)
+                
+                # 应用动作
+                self.apply_action(action)
                 # 计算延迟
                 end_time = time.time()
                 delay_ms = (end_time - start_time) * 1000  # 转换为毫秒
-                # 应用动作
-                self.apply_action(action)
-                print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
+                #print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
                 
                 
                 if self.iteration % 100 == 0:  # 每100步打印一次
