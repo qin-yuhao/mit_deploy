@@ -29,7 +29,7 @@ import threading
 # 修复导入路径
 sys.path.append('/home/cat')
 from motor_ctl.joint import JointController
-sys.path.append('/home/cat/dm_imu')
+sys.path.append('/home/cat/dm_imu/build')
 import dm_imu_py
 import onnxruntime as ort
 
@@ -53,7 +53,7 @@ class RLController:
         self.mode_changed = False  # 模式变化标志
         
         # 观测相关
-        self.obs_dim = 45  # 4 command + 6 imu(去掉lin_acc) + 36 joints
+        self.obs_dim = 46  # 4 command + 6 imu(去掉lin_acc) + 36 joints
         
         # 初始化命令接收器
         self.init_command_receiver()
@@ -133,8 +133,6 @@ class RLController:
         # 初始化关节控制器
         print("初始化关节控制器...")
         self.joint_controller = JointController(JointNamesConfig.model_joint_names,directions=ActuatorConfig.directions)
-        # 启动关节控制器线程
-        self.joint_controller.start_control_thread(rate=600)
         
         # 初始化IMU
         print("初始化IMU...")
@@ -183,7 +181,7 @@ class RLController:
         self.joint_controller.set_joint_commands(
             positions=[0.0] * 12,
             kp_gains=[0.0] * 12,
-            kd_gains=[2.0] * 12
+            kd_gains=[3.0] * 12
         )
         
     def execute_lie_down_mode(self):
@@ -297,14 +295,12 @@ class RLController:
         ang_vel = ang_vel * RLModelConfig.scale.ang_vel
         cmd = self.cmd_vel
         #最后一维度乘以0.5
-        cmd[0] *= 0.5  # vx缩放为0.5
-        cmd[1] *= 0.5
         cmd[2] *= 0.5  # wz缩放为0.5
         # 组装观测向量 - 按照C++代码的顺序（去掉线性加速度）
         obs = np.concatenate([
             # 命令信息 (4维)
             cmd,              # 3: vx, vy, wz
-            #[self.target_height],      # 1: target_height
+            [self.target_height],      # 1: target_height
             
             # IMU数据 (6维) - 去掉线性加速度
             ang_vel,                   # 3: 角速度 (gyro_x, gyro_y, gyro_z)
@@ -363,36 +359,28 @@ class RLController:
             # 每隔decimation步进行一次推理
             if self.iteration % RLModelConfig.decimation == 0:
                 # 开始计时
-                
                 start_time = time.time()
-                obs = self.get_observation()
                 
+                # 获取观测
+                self.apply_action(self.last_action)  # 应用上次动作
+                obs = self.get_observation()
                 # 运行推理
                 action = self.run_inference(obs)
                 
                 # 应用动作
                 self.apply_action(action)
+                
                 # 计算延迟
                 end_time = time.time()
                 delay_ms = (end_time - start_time) * 1000  # 转换为毫秒
-                #print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
-                
                 
                 if self.iteration % 100 == 0:  # 每100步打印一次
                     # 打印关节之前的观测数据
-                    print(f"[{self.iteration}] 观测前10维: {obs[:].round(3)}")
+                    print(f"[{self.iteration}] 观测前10维: {obs[:10].round(3)}")
                     print(f"[{self.iteration}] 动作: {action.round(3)}")
                     print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
-                    #当前位置
-                    # 获取关节状态
-                    
         
         self.iteration += 1
-        # if self.iteration % 100 == 0:
-        #     joint_states = self.joint_controller.get_joint_states()
-        #     joint_pos = np.array(joint_states['positions'])
-        #     #joint_vel = np.array(joint_states['velocities'])
-        #     print(f"[{self.iteration}] 当前关节位置: {joint_pos.round(3)}")
         
     def move_to_default_pose(self, duration=3.0):
         """移动到默认姿态"""
