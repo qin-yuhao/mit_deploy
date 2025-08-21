@@ -10,7 +10,7 @@ import time
 import numpy as np
 import argparse
 from pathlib import Path
-from config import *
+from config_plane import *
 
 # 创建配置实例
 RobotConfig = RobotConfig()
@@ -54,8 +54,6 @@ class RLController:
         
         # 观测相关
         self.obs_dim = 45  # 4 command + 6 imu(去掉lin_acc) + 36 joints
-        self.history_len = 10  # 历史观测长度
-        self.obs_history_buf = np.zeros((self.history_len, self.obs_dim))  # 历史观测缓冲区
         
         # 初始化命令接收器
         self.init_command_receiver()
@@ -297,55 +295,32 @@ class RLController:
         relative_pos = (joint_pos - np.array(RLModelConfig.pose)) * RLModelConfig.scale.dof_pos
         scaled_vel = joint_vel * RLModelConfig.scale.dof_vel
         ang_vel = ang_vel * RLModelConfig.scale.ang_vel
-        cmd = self.cmd_vel 
-        cmd[0] = cmd[0] * RLModelConfig.scale.command_lin
-        cmd[1] = cmd[1] * RLModelConfig.scale.command_lin
-        cmd[2] = cmd[2] * RLModelConfig.scale.command_ang
+        cmd = self.cmd_vel
         obs = np.concatenate([
             # 命令信息 (4维)
-            ang_vel, 
-            gravity_vec, 
-            cmd,
+            cmd,              # 3: vx, vy, wz
+            #[self.target_height],      # 1: target_height
+            
+            # IMU数据 (6维) - 去掉线性加速度
+            ang_vel,                   # 3: 角速度 (gyro_x, gyro_y, gyro_z)
+            # lin_acc,                 # 3: 线加速度 (acc_x, acc_y, acc_z) - 已去掉
+            gravity_vec,               # 3: 重力投影 (proj_x, proj_y, proj_z)
+            
+            # 关节数据 (36维)
             relative_pos,              # 12: 相对关节位置
             scaled_vel,                # 12: 关节速度
             self.last_action           # 12: 上次动作
         ])
-
-        
-        # 更新历史观测缓冲区
-        self.obs_history_buf = np.concatenate([
-            self.obs_history_buf[1:, :],  # 移除最旧的观测
-            obs[np.newaxis, :]            # 添加新的观测
-        ], axis=0)
         
         return obs
         
     def run_inference(self, observation):
         """运行模型推理"""
-        # 获取输入名称
-        self.input_names = [input.name for input in self.onnx_session.get_inputs()]
-        
-
-        # 双输入模型，分别处理当前观测和历史观测
-        # obs_prop：当前时刻的观测数据
-        obs_prop_input = observation.reshape(1, -1).astype(np.float32)
-        
-        # obs_hist：历史观测序列
-        obs_hist_input = self.obs_history_buf[:-1, :].reshape(1, self.history_len-1, -1).astype(np.float32)
-        
-        # 构造完整的历史观测（移除最旧的，添加最新的）
-        obs_hist_full = np.concatenate([obs_hist_input, obs_prop_input[:, np.newaxis, :]], axis=1)
-        #转为float16
-        obs_hist_full = obs_hist_full.astype(np.float16)
-        obs_prop_input = obs_prop_input.astype(np.float16)
-        # 构建输入字典
-        inputs = {
-            self.input_names[0]: obs_prop_input,
-            self.input_names[1]: obs_hist_full
-        }
+        # 准备输入
+        input_data = observation.reshape(1, -1).astype(np.float32)
         
         # 运行推理
-        outputs = self.onnx_session.run(None, inputs)
+        outputs = self.onnx_session.run([self.output_name], {self.input_name: input_data})
         action = outputs[0].squeeze()
         
         return action
@@ -355,8 +330,6 @@ class RLController:
         # 计算目标关节位置
         # 更新上次动作
         self.last_action = action.copy()
-        #clip -10 - 10
-        action = np.clip(action, -10, 10)
         target_positions = np.array(RLModelConfig.pose) + action * np.array(RLModelConfig.scale.action)
         
         # 发送关节命令
