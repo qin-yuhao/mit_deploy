@@ -57,6 +57,10 @@ class RLController:
         self.history_len = 10  # 历史观测长度
         self.obs_history_buf = np.zeros((self.history_len, self.obs_dim))  # 历史观测缓冲区
         
+        # 添加用于计算平均延迟的变量
+        self.delay_sum = 0.0
+        self.delay_count = 0
+        
         # 初始化命令接收器
         self.init_command_receiver()
         
@@ -136,7 +140,7 @@ class RLController:
         print("初始化关节控制器...")
         self.joint_controller = JointController(JointNamesConfig.model_joint_names,directions=ActuatorConfig.directions,zero_positions=ActuatorConfig.zero_positions)
         # 启动关节控制器线程
-        self.joint_controller.start_control_thread(rate=600)
+        self.joint_controller.start_control_thread(rate=500)
         
         # 初始化IMU
         print("初始化IMU...")
@@ -325,19 +329,34 @@ class RLController:
         # 获取输入名称
         self.input_names = [input.name for input in self.onnx_session.get_inputs()]
         
-
+        # 添加观测数据保存功能
+        if not hasattr(self, 'obs_buffer'):
+            self.obs_buffer = []
+            self.obs_his_buffer = []
+            self.obs_save_counter = 0
+        
+        
+        # 保存观测数据到缓冲区
+        
+        
+        # 当缓冲区达到10000个观测时保存到文件
+        if len(self.obs_buffer) >= 1000:
+            obs_array = np.array(self.obs_buffer)
+            obs_his_array = np.array(self.obs_his_buffer)
+            filename = f"observations_{int(time.time())}.npy"
+            np.save(filename, obs_array)
+            print(f"✓ 已保存 {len(self.obs_buffer)} 个观测数据到 {filename}")
+            file_name = f"observations_his{int(time.time())}.npy"
+            np.save(file_name,  obs_his_array)
+            # 重置缓冲区
+            self.obs_buffer = []
+            self.obs_his_buffer = []
+        
         # 双输入模型，分别处理当前观测和历史观测
         # obs_prop：当前时刻的观测数据
-        obs_prop_input = observation.reshape(1, -1).astype(np.float32)
-        
-        # obs_hist：历史观测序列
-        obs_hist_input = self.obs_history_buf[:-1, :].reshape(1, self.history_len-1, -1).astype(np.float32)
-        
-        # 构造完整的历史观测（移除最旧的，添加最新的）
-        obs_hist_full = np.concatenate([obs_hist_input, obs_prop_input[:, np.newaxis, :]], axis=1)
-        #转为float16
-        obs_hist_full = obs_hist_full.astype(np.float16)
-        obs_prop_input = obs_prop_input.astype(np.float16)
+        obs_prop_input = observation.reshape(1, -1).astype(np.float16)
+        obs_hist_full = self.obs_history_buf.reshape(1, self.history_len, -1).astype(np.float16)
+    
         # 构建输入字典
         inputs = {
             self.input_names[0]: obs_prop_input,
@@ -347,9 +366,15 @@ class RLController:
         # 运行推理
         outputs = self.onnx_session.run(None, inputs)
         action = outputs[0].squeeze()
+
+
+        # self.obs_buffer.append(obs_prop_input.copy())
+        # self.obs_his_buffer.append(obs_hist_full.copy())
+        # self.obs_save_counter += 1
+        # print(f"[ONNX] 推理次数: {len(self.obs_buffer)}")
         
         return action
-        
+            
     def apply_action(self, action):
         """应用动作到关节"""
         # 计算目标关节位置
@@ -397,14 +422,22 @@ class RLController:
                 # 计算延迟
                 end_time = time.time()
                 delay_ms = (end_time - start_time) * 1000  # 转换为毫秒
+                # 累积延迟用于计算平均值
+                self.delay_sum += delay_ms
+                self.delay_count += 1
                 #print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
                 
                 
                 if self.iteration % 100 == 0:  # 每100步打印一次
+                    # 计算并打印平均延迟
+                    avg_delay_ms = self.delay_sum / self.delay_count if self.delay_count > 0 else 0
                     # 打印关节之前的观测数据
                     print(f"[{self.iteration}] 观测前10维: {obs[:].round(3)}")
                     print(f"[{self.iteration}] 动作: {action.round(3)}")
-                    print(f"[{self.iteration}] 处理延迟: {delay_ms:.2f}ms")
+                    print(f"[{self.iteration}] 平均处理延迟 ({self.delay_count}次): {avg_delay_ms:.2f}ms")
+                    # 重置延迟统计
+                    self.delay_sum = 0.0
+                    self.delay_count = 0
                     #当前位置
                     # 获取关节状态
                     

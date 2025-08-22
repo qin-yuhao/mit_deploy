@@ -104,13 +104,13 @@ class StandUpConfig(PoseConfig):
     def __post_init__(self):
         if self.pose is None:
             self.pose = [
-                -0.1, -0.8, 1.5,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.1, -0.8, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.1,  1, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.1,  1, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                -0.1, -0.7, 1.5,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.1, -0.7, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                -0.1,  0.8, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.1,  0.8, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
-            self.kp = [25] * 12
+            self.kp = [30] * 12
         if self.kd is None:
             self.kd = [0.5] * 12
 
@@ -150,7 +150,7 @@ class RLModelConfig:
     
     decimation: int = 1
     #model_path: str = "/home/cat/mit_dog_ctl/policy719.onnx"
-    model_path: str = "/home/cat/deploy/model.onnx"
+    model_path: str = "/home/cat/deploy/model1.onnx"
 
     # 缩放配置
     scale: ScaleConfig = None
@@ -158,14 +158,14 @@ class RLModelConfig:
     def __post_init__(self):
         if self.pose is None:
             self.pose = [
-                -0.1, -0.8, 1.5,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.1, -0.8, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.1,  1, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.1,  1, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                -0.1, -0.7, 1.5,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.1, -0.7, 1.5,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                -0.13,  0.8, -1.5,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.1,  0.8, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         
         if self.kp is None:
-            self.kp = [30]* 12
+            self.kp = [28]* 12
         
         if self.kd is None:
             self.kd = [0.5] * 12
