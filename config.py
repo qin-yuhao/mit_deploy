@@ -150,7 +150,7 @@ class RLModelConfig:
     
     decimation: int = 1
     #model_path: str = "/home/cat/mit_dog_ctl/policy719.onnx"
-    model_path: str = "/home/cat/deploy/model1.onnx"
+    model_path: str = "/home/cat/deploy/model.onnx"
 
     # 缩放配置
     scale: ScaleConfig = None
@@ -165,7 +165,7 @@ class RLModelConfig:
             ]
         
         if self.kp is None:
-            self.kp = [28]* 12
+            self.kp = [30]* 12
         
         if self.kd is None:
             self.kd = [0.5] * 12

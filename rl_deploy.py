@@ -391,8 +391,6 @@ class RLController:
             kd_gains=RLModelConfig.kd
         )
         
-        
-        
     def set_command_velocity(self, vx=0.0, vy=0.0, wz=0.0):
         """设置命令速度"""
         self.cmd_vel = np.array([vx, vy, wz])
