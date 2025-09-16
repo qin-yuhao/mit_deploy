@@ -62,6 +62,12 @@ class ActuatorConfig:
                 -0.0521, 1.6190,  -2.7960,
                 0.0644,-1.6319,  2.7918
             ]
+            self.zero_positions = [
+                -0.0100, -1.4779, -2.8405,  # FL
+                0.1162, 1.3995, 0.7895,  # FR
+                -0.0087, 1.6471, -2.8214,  # RL
+                -0.0518, -1.7285, 2.8691,  # RR
+            ]
 
 
 @dataclass
@@ -169,10 +175,10 @@ class RLModelConfig:
     def __post_init__(self):
         if self.pose is None:
             self.pose = [
-                -0.1, -0.6, 1.2,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.1, -0.6, 1.2,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.1,  0.7, -1.4,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.1,  0.7, -1.4    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                -0.0, -0.6, 1.2,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.0, -0.6, 1.2,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                -0.0,  0.7, -1.4,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.0,  0.7, -1.4    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         
         if self.kp is None:
