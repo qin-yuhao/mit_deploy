@@ -167,7 +167,7 @@ class RLModelConfig:
     kd: List[float] = None
     
     decimation: int = 1
-    model_path: str = "/home/cat/deploy/policy_barrier.onnx"
+    model_path: str = "/home/cat/deploy/policy_barrier2.onnx"
 
     # 缩放配置
     scale: ScaleConfig = None
