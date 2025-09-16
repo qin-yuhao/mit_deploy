@@ -56,17 +56,17 @@ class ActuatorConfig:
             #     -0.0974,-1.6584,  2.7497
             # ]
 
+            # self.zero_positions = [
+            #     0.0858, -1.5690, -2.8003,
+            #     0.0307, 1.4867,  0.6536,
+            #     -0.0521, 1.6190,  -2.7960,
+            #     0.0644,-1.6319,  2.7918
+            # ]
             self.zero_positions = [
-                0.0858, -1.5690, -2.8003,
-                0.0307, 1.4867,  0.6536,
-                -0.0521, 1.6190,  -2.7960,
-                0.0644,-1.6319,  2.7918
-            ]
-            self.zero_positions = [
-                -0.0100, -1.4779, -2.8405,  # FL
-                0.1162, 1.3995, 0.7895,  # FR
-                -0.0087, 1.6471, -2.8214,  # RL
-                -0.0518, -1.7285, 2.8691,  # RR
+                0.0616, -1.5414, -2.8268,  # FL
+                -0.0015, 1.5249, 0.6796,  # FR
+                0.0004, 1.6478, -2.8279,  # RL
+                0.0482, -1.6225, 2.7913,  # RR
             ]
 
 
@@ -103,7 +103,7 @@ class LieDownConfig(PoseConfig):
                 -0.6,  1.17, -2.7    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
-            self.kp = [4] * 12
+            self.kp = [8] * 12
         if self.kd is None:
             self.kd = [0.5] * 12
 
@@ -128,7 +128,7 @@ class StandUpConfig(PoseConfig):
                 -0.1,  0.7, -1.4    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
-            self.kp = [0] * 12
+            self.kp = [25] * 12
         if self.kd is None:
             self.kd = [0.5] * 12
 
@@ -146,7 +146,7 @@ class ScaleConfig:
  
     def __post_init__(self):
         if self.action is None:
-            self.action = [0.0 for _ in range(12)]  # 默认动作缩放为0.0
+            self.action = [0.08 for _ in range(12)]  # 默认动作缩放为0.0
             hip_decimation = 0.5
             
             # 通过全局常量设置髋关节的缩放
@@ -175,17 +175,17 @@ class RLModelConfig:
     def __post_init__(self):
         if self.pose is None:
             self.pose = [
-                -0.0, -0.6, 1.2,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
-                -0.0, -0.6, 1.2,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
-                -0.0,  0.7, -1.4,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
-                -0.0,  0.7, -1.4    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
+                -0.05, -0.6, 1.2,    # FL_hip_joint, FL_thigh_joint, FL_calf_joint
+                -0.05, -0.6, 1.2,    # FR_hip_joint, FR_thigh_joint, FR_calf_joint
+                -0.05,  0.7, -1.4,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
+                -0.05,  0.7, -1.4    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         
         if self.kp is None:
-            self.kp = [0]* 12
+            self.kp = [25]* 12
         
         if self.kd is None:
-            self.kd = [0.0] * 12
+            self.kd = [0.5] * 12
         
         if self.scale is None:
             self.scale = ScaleConfig()

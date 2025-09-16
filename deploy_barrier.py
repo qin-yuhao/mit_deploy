@@ -54,7 +54,7 @@ class RLController:
         
         # 观测相关
         self.obs_dim = 47  # commands(3) + ang_vel(3) + gravity(3) + dof_pos(12) + dof_vel(12) + actions(12) + sine_cycle(1) + cosine_cycle(1)
-        self.history_len = 10  # 历史观测长度
+        self.history_len = 30  # 历史观测长度
         self.obs_history_buf = np.zeros((self.history_len, self.obs_dim))  # 历史观测缓冲区
         
         # 步态相关变量
@@ -360,27 +360,28 @@ class RLController:
         
         
         # 保存观测数据到缓冲区
-        self.obs_buffer.append(observation.copy())
-        self.obs_his_buffer.append(self.obs_history_buf.copy())
+        # self.obs_buffer.append(observation.copy())
+        # self.obs_his_buffer.append(self.obs_history_buf.copy())
         self.obs_save_counter += 1
         # print(f"[ONNX] 推理次数: {len(self.obs_buffer)}")
 
         # 当缓冲区达到10000个观测时保存到文件
-        if len(self.obs_buffer) >= 1000:
-            obs_array = np.array(self.obs_buffer)
-            obs_his_array = np.array(self.obs_his_buffer)
-            filename = f"observations_{int(time.time())}.npy"
-            np.save(filename, obs_array)
-            print(f"✓ 已保存 {len(self.obs_buffer)} 个观测数据到 {filename}")
-            file_name = f"observations_his{int(time.time())}.npy"
-            np.save(file_name,  obs_his_array)
-            # 重置缓冲区
-            self.obs_buffer = []
-            self.obs_his_buffer = []
+        # if len(self.obs_buffer) >= 1000:
+        #     obs_array = np.array(self.obs_buffer)
+        #     obs_his_array = np.array(self.obs_his_buffer)
+        #     filename = f"observations_{int(time.time())}.npy"
+        #     np.save(filename, obs_array)
+        #     print(f"✓ 已保存 {len(self.obs_buffer)} 个观测数据到 {filename}")
+        #     file_name = f"observations_his{int(time.time())}.npy"
+        #     np.save(file_name,  obs_his_array)
+        #     # 重置缓冲区
+        #     self.obs_buffer = []
+        #     self.obs_his_buffer = []
         
         # 单输入模型，直接使用观测历史缓冲区
         # obs_history_buf包含完整的观测历史，第0行是最新观测，第1行是上一步观测，以此类推
-        obs_hist_input = self.obs_history_buf.reshape(1, self.history_len, -1).astype(np.float32)
+        # 将3D张量展平为2D：[batch_size, history_len * obs_dim]
+        obs_hist_input = self.obs_history_buf.reshape(1, -1).astype(np.float32)
     
         # 构建输入字典（单输入）
         inputs = {
