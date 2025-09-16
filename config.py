@@ -48,11 +48,19 @@ class ActuatorConfig:
             #     -0.0151,  1.7202,  -2.724459,  # 左后腿 (RL): hip, thigh, calf
             #     -0.0232, -1.5967,    2.708859   # 右后腿 (RR): hip, thigh, calf
             # ]
+
+            
+            # self.zero_positions = [
+            #     0.0514, -1.4990, -2.7934,
+            #     0.0238, 1.4082,  2.7907 - 2.141,
+            #     0.0882, 1.6891,  -2.7742,
+            #     -0.0974,-1.6584,  2.7497
+            # ]
             self.zero_positions = [
-                0.0514, -1.4990, -2.7934,
-                0.0238, 1.4082,  2.7907,
-                0.0882, 1.6891,  -2.7742,
-                -0.0974,-1.6584,  2.7497
+                0.0801, -1.5482, -2.7965,
+                -0.0187, 1.5333,  0.6536,
+                -0.0301, 1.6332,  -2.8030,
+                0.0817,-1.6152,  2.7692
             ]
 
 
@@ -88,6 +96,12 @@ class LieDownConfig(PoseConfig):
                 -0.6,  1.17, -2.7,   # RL_hip_joint, RL_thigh_joint, RL_calf_joint
                 -0.6,  1.17, -2.7    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
+
+            #趴下上电位置
+            # -0.6283，-1.0647，2.7227
+            # -0.6283，-1.0647，2.7227
+            # -0.6283，1.0647，-2.7053
+            # -0.6283，1.0647，-2.7053
         if self.kp is None:
             self.kp = [8] * 12
         if self.kd is None:
@@ -110,7 +124,7 @@ class StandUpConfig(PoseConfig):
                 -0.1,  0.8, -1.5    # RR_hip_joint, RR_thigh_joint, RR_calf_joint
             ]
         if self.kp is None:
-            self.kp = [30] * 12
+            self.kp = [25] * 12
         if self.kd is None:
             self.kd = [0.5] * 12
 
@@ -165,10 +179,10 @@ class RLModelConfig:
             ]
         
         if self.kp is None:
-            self.kp = [30]* 12
+            self.kp = [29]* 12
         
         if self.kd is None:
-            self.kd = [0.5] * 12
+            self.kd = [0.8] * 12
         
         if self.scale is None:
             self.scale = ScaleConfig()

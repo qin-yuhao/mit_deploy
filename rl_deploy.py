@@ -10,7 +10,7 @@ import time
 import numpy as np
 import argparse
 from pathlib import Path
-from config import *
+from config2 import *
 
 # 创建配置实例
 RobotConfig = RobotConfig()
@@ -140,7 +140,7 @@ class RLController:
         print("初始化关节控制器...")
         self.joint_controller = JointController(JointNamesConfig.model_joint_names,directions=ActuatorConfig.directions,zero_positions=ActuatorConfig.zero_positions)
         # 启动关节控制器线程
-        self.joint_controller.start_control_thread(rate=500)
+        self.joint_controller.start_control_thread(rate=800)
         
         # 初始化IMU
         print("初始化IMU...")
